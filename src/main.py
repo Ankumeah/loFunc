@@ -1,44 +1,40 @@
-import sympy.parsing.sympy_parser as sy_parser
-import matplotlib.pyplot as plt
-import rich.console as c
+import flask
 
-import sys
+import utils
 
-def main(con: c.Console):
-  expr: str = con.input("[green]f(x) = [/green]")
+import base64
 
-  cases: dict[float, float] = {}
-  for i in range(0, 11):
-    cases[i] = 0
+api = flask.Flask(__name__)
 
-  gen_points(expr, cases, con)
-  gen_graph(expr, cases, "src/img.jpg", con)
+@api.route("/gen", methods = ["POST"])
+def gen_points():
+  body = flask.request.get_json(silent = False)
+  feilds = { "expr": str, "cases": list, "instrument": str , "bpm": int}
+  for feild in feilds:
+    if not isinstance(body.get(feild), feilds[feild]):
+      return { "error": f"expected {feild} of type {feilds[feild]}" }
+  expr = body["expr"]
+  cases: dict[float, float] = { case: 0 for case in body["cases"] }
+  bpm = body["bpm"]
+  instrument = body["instrument"]
 
-def gen_points(expr: str, cases: dict[float, float], con: c.Console) -> None:
-  for x in cases.keys():
-    try:
-      cases[x] = float(sy_parser.parse_expr(expr, local_dict = { "x": x }))
-    except TypeError:
-      con.print(f"[red]Skipping f({x}) as it cannot be represent as a constant real number[/red]")
-    except OverflowError:
-      con.print(f"[red]Skipping f({x}) as it is too large[/red]")
+  errors = utils.gen_points(expr, cases)
+  image = utils.gen_graph(expr, cases)
+  mid = utils.gen_midi(cases, bpm, instrument)
+  aud = utils.midi_to_wav(mid)
 
-def gen_graph(expr: str, cases: dict[float, float], save_path: str, con: c.Console) -> None:
-  plt.plot(list(cases.keys()), list(cases.values()), marker = "o", linewidth = 2, markersize = 6)
-  plt.xlabel("x")
-  plt.ylabel("f(x)")
-  plt.title(expr)
-  plt.grid(True)
-  plt.savefig(save_path)
+  image = base64.b64encode(image).decode("utf-8")
+  aud = base64.b64encode(aud).decode("utf-8")
 
-  con.print(f"[green]Saved graph to {save_path}[/green]")
+  return {
+    "image": image,
+    "aud": aud,
+    "errors": errors
+  }
+
+@api.route("/", methods = ["GET"])
+def index():
+  return flask.render_template("index.html")
 
 if __name__ == "__main__":
-  con = c.Console()
-
-  try:
-    main(con)
-  except KeyboardInterrupt:
-    con.print()
-    con.print("[green]Bye![/green]")
-    sys.exit()
+  api.run(debug = True)

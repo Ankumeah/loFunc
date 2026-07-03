@@ -1,2 +1,4 @@
 .venv/
 test.d/
+src/img.jpg
+**/__pycache__/

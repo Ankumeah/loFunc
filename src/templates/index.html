@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang = "en">
+<head>
+  <meta charset = "utf-8" />
+  <meta name = "viewport" content = "width = device-width, initial-scale = 1" />
+  <title>loFunc</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 0 16px;
+      background: #111;
+      color: #eee;
+    }
+    .row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    label {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 6px;
+    }
+    input, select, button {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px;
+      font-size: 14px;
+      border: 1px solid #444;
+      border-radius: 8px;
+      background: #1b1b1b;
+      color: #eee;
+    }
+    .field {
+      flex: 1;
+      min-width: 180px;
+    }
+    button {
+      width: auto;
+      cursor: pointer;
+      padding: 10px 18px;
+      background: #2a2a2a;
+    }
+    .output {
+      margin-top: 20px;
+    }
+    img {
+      max-width: 100%;
+      display: block;
+      margin-top: 12px;
+      border-radius: 10px;
+    }
+    audio {
+      width: 100%;
+      margin-top: 12px;
+    }
+    .errors {
+      margin-top: 16px;
+      color: #ff8a8a;
+      white-space: pre-wrap;
+    }
+    .status {
+      margin-top: 10px;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+  <h1>loFunc</h1>
+
+  <div class = "row">
+    <div class = "field">
+      <label for = "min">Min</label>
+      <input id = "min" type = "number" />
+    </div>
+
+    <div class = "field">
+      <label for = "max">Max</label>
+      <input id = "max" type = "number" />
+    </div>
+
+    <div class = "field">
+      <label for = "bpm">bpm</label>
+      <input id = "bpm" type = "number" />
+    </div>
+
+    <div class = "field">
+      <label for = "instrument">Instrument</label>
+      <select id = "instrument"></select>
+    </div>
+  </div>
+
+  <div class = "row">
+    <div class = "field" style = "flex: 2;">
+      <label for = "expression">Expression</label>
+      <input id = "expression" type = "text" placeholder = "Enter expression" />
+    </div>
+  </div>
+
+  <button id = "generate">generate</button>
+
+  <div class = "output">
+    <audio id = "audio" controls style = "display:none;"></audio>
+    <img id = "image" alt = "" style = "display:none;" />
+    <div id = "status" class = "status"></div>
+    <div id = "errors" class = "errors"></div>
+  </div>
+
+  <script>
+    const instruments = ["Accordion", "AcousticBass", "AcousticGuitar", "Agogo", "Alto", "AltoSaxophone", "Bagpipes", "Banjo", "Baritone", "BaritoneSaxophone", "Bass", "BassClarinet", "BassDrum", "BassTrombone", "Bassoon", "BongoDrums", "BrassInstrument", "Castanets", "Celesta", "Choir", "ChurchBells", "Clarinet", "Clavichord", "Conductor", "CongaDrum", "Contrabass", "Contrabassoon", "Cowbell", "CrashCymbals", "Cymbals", "Dulcimer", "ElectricBass", "ElectricGuitar", "ElectricOrgan", "ElectricPiano", "EnglishHorn", "FingerCymbals", "Flute", "FretlessBass", "Glockenspiel", "Gong", "Guitar", "Handbells", "Harmonica", "Harp", "Harpsichord", "HiHatCymbal", "Horn", "Instrument", "InstrumentException", "Iterable", "Kalimba", "KeyboardInstrument", "Koto", "Lute", "Mandolin", "Maracas", "Marimba", "MezzoSoprano", "Oboe", "Ocarina", "OffsetTree", "OrderedDict", "Organ", "PanFlute", "Percussion", "Piano", "Piccolo", "PipeOrgan", "PitchedPercussion", "Ratchet", "Recorder", "ReedOrgan", "RideCymbals", "Sampler", "SandpaperBlocks", "Saxophone", "SearchLanguage", "Shakuhachi", "Shamisen", "Shehnai", "Siren", "Sitar", "SizzleCymbal", "SleighBells", "SnareDrum", "Soprano", "SopranoSaxophone", "SplashCymbals", "SteelDrum", "StringInstrument", "SuspendedCymbal", "Taiko", "TamTam", "Tambourine", "TempleBlock", "Tenor", "TenorDrum", "TenorSaxophone", "Test", "TestExternal", "Timbales", "Timpani", "TomTom", "Triangle", "Trombone", "Trumpet", "Tuba", "TubularBells", "Ukulele", "UnpitchedPercussion", "Vibraphone", "Vibraslap", "Viola", "Violin", "Violoncello", "Vocalist", "Whip", "Whistle", "WindMachine", "Woodblock", "WoodwindInstrument", "Xylophone"];
+
+    const instrumentSelect = document.getElementById("instrument");
+    const generateBtn = document.getElementById("generate");
+    const imageEl = document.getElementById("image");
+    const audioEl = document.getElementById("audio");
+    const errorsEl = document.getElementById("errors");
+    const statusEl = document.getElementById("status");
+
+    instruments.forEach(name => {
+      const opt = document.createElement("option");
+      opt.value = name;
+      opt.textContent = name;
+      instrumentSelect.appendChild(opt);
+    });
+
+    function base64ToBlobUrl(base64Data, mimeType) {
+      const byteString = atob(base64Data);
+      const bytes = new Uint8Array(byteString.length);
+      for (let i = 0; i < byteString.length; i++) {
+        bytes[i] = byteString.charCodeAt(i);
+      }
+      const blob = new Blob([bytes], { type: mimeType });
+      return URL.createObjectURL(blob);
+    }
+
+    generateBtn.addEventListener("click", async () => {
+      errorsEl.textContent = "";
+      statusEl.textContent = "Loading...";
+      imageEl.style.display = "none";
+      audioEl.style.display = "none";
+      imageEl.removeAttribute("src");
+      audioEl.removeAttribute("src");
+
+      const min = parseInt(document.getElementById("min").value, 10);
+      const max = parseInt(document.getElementById("max").value, 10);
+      const bpm = parseInt(document.getElementById("bpm").value, 10);
+      const expr = document.getElementById("expression").value;
+
+      if (Number.isNaN(min) || Number.isNaN(max) || Number.isNaN(bpm)) {
+        statusEl.textContent = "";
+        errorsEl.textContent = "Min, Max and bpm must be numbers.";
+        return;
+      }
+
+      const cases = [];
+      for (let i = min; i <=  max; i++) cases.push(i);
+
+      try {
+        const res = await fetch("http://localhost:5000/gen", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            cases,
+            expr,
+            bpm,
+            instrument: instrumentSelect.value
+          })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || data.error) {
+          statusEl.textContent = "";
+          errorsEl.textContent = data.error || "API error";
+          return;
+        }
+
+        statusEl.textContent = "";
+
+        if (data.aud) {
+          const audioUrl = base64ToBlobUrl(data.aud, "audio/wav");
+          audioEl.src = audioUrl;
+          audioEl.style.display = "block";
+        }
+
+        if (data.image) {
+          const imageUrl = base64ToBlobUrl(data.image, "image/png");
+          imageEl.src = imageUrl;
+          imageEl.style.display = "block";
+        }
+
+        if (Array.isArray(data.errors) && data.errors.length) {
+          errorsEl.textContent = data.errors.join("\n");
+        }
+      } catch (err) {
+        statusEl.textContent = "";
+        errorsEl.textContent = String(err);
+      }
+    });
+  </script>
+</body>
+</html>
