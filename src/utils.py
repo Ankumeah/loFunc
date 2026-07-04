@@ -48,15 +48,15 @@ def gen_midi(cases: dict[float, float], bpm: int, instrument: str) -> bytes:
   else:
     y_normalized = (y_array - y_min) / (y_max - y_min)
 
-  midi_notes: np.ndarray = (y_normalized * 127).astype(int)
+  midi_notes: np.ndarray = 40 + (y_normalized * 30).astype(int)
   x_diffs: np.ndarray = np.diff(x_array, prepend = x_array[0])
   x_diffs = np.abs(x_diffs)
   x_min: float = np.min(x_diffs)
   x_max: float = np.max(x_diffs)
   if x_max ==  x_min:
-    note_durations: np.ndarray = np.ones_like(x_diffs) * 0.5
+    note_durations: np.ndarray = np.ones_like(x_diffs) * (1/4)
   else:
-    note_durations = 0.25 + (x_diffs - x_min) / (x_max - x_min) * 1.75
+    note_durations = 0.25 + (x_diffs - x_min) / (x_max - x_min) * (1/8)
 
   s = music.stream.Score()
   part = music.stream.Part()
