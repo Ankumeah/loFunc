@@ -1,4 +1,5 @@
 .venv/
+build/
 test.d/
 src/img.jpg
 **/__pycache__/
