@@ -1,4 +1,5 @@
 import flask
+from flask_cors import CORS
 
 import utils
 
@@ -6,6 +7,7 @@ import base64
 import os
 
 api = flask.Flask(__name__)
+CORS(api)
 port = int(os.environ.get("PORT", ""))
 
 @api.route("/gen", methods = ["POST"])
