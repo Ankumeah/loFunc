@@ -3,8 +3,10 @@ import flask
 import utils
 
 import base64
+import os
 
 api = flask.Flask(__name__)
+port = int(os.environ.get("PORT", ""))
 
 @api.route("/gen", methods = ["POST"])
 def gen_points():
@@ -37,4 +39,4 @@ def index():
   return flask.render_template("index.html")
 
 if __name__ == "__main__":
-  api.run(debug = True)
+  api.run(debug = True, host = "0.0.0.0", port = port)
